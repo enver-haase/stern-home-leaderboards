@@ -1,0 +1,29 @@
+/target/
+.idea/
+.vscode/
+.settings
+.project
+.classpath
+.factorypath
+
+*.iml
+*.log
+.DS_Store
+.env
+
+# The following files are generated/updated by vaadin-maven-plugin
+node_modules/
+src/main/frontend/generated/
+src/main/dev-bundle/
+src/main/bundles/
+vite.generated.ts
+vite.config.ts
+tsconfig.json
+types.d.ts
+package.json
+package-lock.json
+pnpm-lock.yaml
+
+# Test artifacts
+.playwright-mcp/
+confetti-capture.png
