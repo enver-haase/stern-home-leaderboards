@@ -70,7 +70,7 @@ public class TechAlertsPopup extends Div {
         if (isoDate == null) return "";
         try {
             LocalDateTime dt = LocalDateTime.parse(isoDate.replace("Z", "").split("\\+")[0]);
-            return dt.format(DISPLAY_FORMAT);
+            return dt.format(DISPLAY_FORMAT) + " UTC";
         } catch (DateTimeParseException e) {
             return isoDate;
         }
