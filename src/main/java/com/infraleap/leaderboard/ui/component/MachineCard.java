@@ -71,6 +71,26 @@ public class MachineCard extends Div {
             nameLabel.addClassName("machine-name-text");
             header.add(nameLabel);
         }
+
+        // Model type + software version info (bottom right of logo area)
+        String modelType = machine.model() != null ? machine.model().modelTypeName() : null;
+        String version = machine.codeVersion();
+        if (modelType != null || version != null) {
+            Div machineInfo = new Div();
+            machineInfo.addClassName("machine-info");
+            if (modelType != null) {
+                Span typeSpan = new Span(modelType);
+                typeSpan.addClassName("machine-type");
+                machineInfo.add(typeSpan);
+            }
+            if (version != null) {
+                Span versionSpan = new Span(version);
+                versionSpan.addClassName("machine-version");
+                machineInfo.add(versionSpan);
+            }
+            header.add(machineInfo);
+        }
+
         add(header);
 
         // High scores

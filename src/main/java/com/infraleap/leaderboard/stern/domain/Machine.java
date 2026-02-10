@@ -12,7 +12,8 @@ public record Machine(
         @JsonProperty("last_played") String lastPlayed,
         MachineModel model,
         MachineAddress address,
-        @JsonProperty("last_seven_day_tech_alerts") List<TechAlert> techAlerts
+        @JsonProperty("last_seven_day_tech_alerts") List<TechAlert> techAlerts,
+        String codeVersion
 ) {
     public long safeId() { return id != null ? id : 0; }
     public boolean isArchived() { return archived != null && archived; }
