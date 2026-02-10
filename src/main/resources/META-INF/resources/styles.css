@@ -728,3 +728,39 @@ vaadin-popover-overlay::part(overlay) {
   outline: 2px solid #e53935;
   outline-offset: 2px;
 }
+
+/* ============================================================
+   Player Profile Dialog
+   ============================================================ */
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px 0;
+  width: 100%;
+}
+
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+vaadin-dialog-overlay::part(overlay) {
+  background: #1a202c;
+  border: 1px solid #4a5568;
+  color: #e2e8f0;
+}
+
+vaadin-dialog-overlay::part(header) {
+  background: #2d3748;
+  border-bottom: 1px solid #4a5568;
+  color: #fff;
+}
+
+vaadin-dialog-overlay::part(content) {
+  background: #1a202c;
+}

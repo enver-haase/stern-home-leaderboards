@@ -1,9 +1,6 @@
 package com.infraleap.leaderboard.stern.service;
 
-import com.infraleap.leaderboard.stern.domain.AvatarInfo;
-import com.infraleap.leaderboard.stern.domain.HighScoreEntry;
-import com.infraleap.leaderboard.stern.domain.HighScoreResponse;
-import com.infraleap.leaderboard.stern.domain.Machine;
+import com.infraleap.leaderboard.stern.domain.*;
 import com.infraleap.leaderboard.ui.broadcast.LeaderboardBroadcaster;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -26,8 +23,10 @@ public class LeaderboardDataService {
     private volatile List<Machine> machines = List.of();
     private final ConcurrentHashMap<Long, HighScoreResponse> highScores = new ConcurrentHashMap<>();
     private volatile Map<String, AvatarInfo> avatars = Map.of();
+    private volatile Map<String, PlayerProfileData> playerProfiles = Map.of();
     private final ConcurrentHashMap<Long, List<HighScoreEntry>> previousScores = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, Set<String>> newScoreIds = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> userPkCache = new ConcurrentHashMap<>();
 
     public LeaderboardDataService(SternApiClient apiClient, LeaderboardBroadcaster broadcaster) {
         this.apiClient = apiClient;
@@ -55,11 +54,14 @@ public class LeaderboardDataService {
             }
             this.machines = fetchedMachines;
 
-            // Fetch avatars from user profile (v2 API)
+            // Fetch user profile (avatars + badges + friends) from v2 API
             try {
-                this.avatars = apiClient.fetchAvatars();
+                UserProfile profile = apiClient.fetchUserProfile();
+                if (profile != null) {
+                    buildProfileMaps(profile);
+                }
             } catch (Exception e) {
-                log.warn("Failed to fetch avatars: {}", e.getMessage());
+                log.warn("Failed to fetch user profile: {}", e.getMessage());
             }
 
             // Fetch high scores for each machine and detect new scores
@@ -158,7 +160,105 @@ public class LeaderboardDataService {
         return avatars;
     }
 
+    public PlayerProfileData getPlayerProfile(String username) {
+        if (username == null) return null;
+        return playerProfiles.get(username.toLowerCase());
+    }
+
+    public PlayerProfileData fetchEnrichedProfile(String username) {
+        if (username == null) return null;
+
+        PlayerProfileData existing = playerProfiles.get(username.toLowerCase());
+
+        // FULL tier (logged-in user) already has badges from user_detail
+        if (existing != null && existing.badges() != null && !existing.badges().isEmpty()) {
+            return existing;
+        }
+
+        // FRIEND tier: we have a pk, fetch badges on demand
+        if (existing != null && existing.pk() != null) {
+            List<Badge> badges = apiClient.fetchUserBadges(existing.pk());
+            return new PlayerProfileData(
+                    existing.username(), existing.initials(),
+                    existing.avatarUrl(), existing.backgroundColor(),
+                    existing.locationInfo(), badges,
+                    existing.tier(), existing.pk());
+        }
+
+        // UNKNOWN: search for pk, then fetch badges
+        Integer pk = userPkCache.get(username.toLowerCase());
+        if (pk == null) {
+            pk = apiClient.searchUserPk(username);
+            if (pk != null) {
+                userPkCache.put(username.toLowerCase(), pk);
+            }
+        }
+
+        if (pk != null) {
+            List<Badge> badges = apiClient.fetchUserBadges(pk);
+            if (existing != null) {
+                return new PlayerProfileData(
+                        existing.username(), existing.initials(),
+                        existing.avatarUrl(), existing.backgroundColor(),
+                        existing.locationInfo(), badges,
+                        existing.tier(), pk);
+            }
+            return new PlayerProfileData(
+                    username, username,
+                    null, null, null, badges,
+                    PlayerProfileData.Tier.UNKNOWN, pk);
+        }
+
+        return existing;
+    }
+
     public Set<String> getNewScoreIds(long machineId) {
         return newScoreIds.getOrDefault(machineId, Set.of());
+    }
+
+    private void buildProfileMaps(UserProfile profile) {
+        Map<String, AvatarInfo> avatarMap = new HashMap<>();
+        Map<String, PlayerProfileData> profileMap = new HashMap<>();
+
+        // Logged-in user (FULL tier with badges)
+        if (profile.initials() != null) {
+            String key = profile.initials().toLowerCase();
+            if (profile.avatarUrl() != null && !profile.avatarUrl().isBlank()) {
+                avatarMap.put(key, new AvatarInfo(profile.avatarUrl(), profile.backgroundColorHex()));
+            }
+            profileMap.put(key, new PlayerProfileData(
+                    profile.initials(), profile.initials(),
+                    profile.avatarUrl(), profile.backgroundColorHex(),
+                    null,
+                    profile.badges() != null ? profile.badges() : List.of(),
+                    PlayerProfileData.Tier.FULL,
+                    null));
+        }
+
+        // Friends (FRIEND tier, no badges)
+        if (profile.following() != null) {
+            for (FollowedUser followed : profile.following()) {
+                if (followed.initials() == null) continue;
+                String key = followed.initials().toLowerCase();
+                if (followed.avatarUrl() != null && !followed.avatarUrl().isBlank()) {
+                    avatarMap.put(key, new AvatarInfo(followed.avatarUrl(), followed.backgroundColorHex()));
+                }
+                PlayerProfileData friendProfile = new PlayerProfileData(
+                        followed.username(), followed.initials(),
+                        followed.avatarUrl(), followed.backgroundColorHex(),
+                        followed.locationInfo(),
+                        null,
+                        PlayerProfileData.Tier.FRIEND,
+                        followed.pk());
+                profileMap.put(key, friendProfile);
+                if (followed.username() != null) {
+                    profileMap.put(followed.username().toLowerCase(), friendProfile);
+                }
+            }
+        }
+
+        log.info("Fetched {} avatar entries from user profile", avatarMap.size());
+        this.avatars = avatarMap;
+        this.playerProfiles = profileMap;
     }
 }

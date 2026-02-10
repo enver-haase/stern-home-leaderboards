@@ -10,5 +10,6 @@ public record UserProfile(
         String initials,
         @JsonProperty("avatar_url") String avatarUrl,
         @JsonProperty("background_color_hex") String backgroundColorHex,
-        List<FollowedUser> following
+        List<FollowedUser> following,
+        List<Badge> badges
 ) {}

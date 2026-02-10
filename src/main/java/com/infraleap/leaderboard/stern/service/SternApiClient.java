@@ -8,9 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class SternApiClient {
@@ -91,37 +89,45 @@ public class SternApiClient {
                 HighScoreResponse.class, 0);
     }
 
-    public Map<String, AvatarInfo> fetchAvatars() {
+    public UserProfile fetchUserProfile() {
         UserDetailResponse response = fetchWithRetry(
                 API_V2_BASE + "/user_detail/",
                 UserDetailResponse.class, 0);
 
-        Map<String, AvatarInfo> avatarMap = new HashMap<>();
         if (response == null || response.user() == null || response.user().profile() == null) {
             log.warn("user_detail response has no profile data");
-            return avatarMap;
+            return null;
         }
 
-        UserProfile profile = response.user().profile();
+        return response.user().profile();
+    }
 
-        // Add the logged-in user's own avatar
-        if (profile.initials() != null && profile.avatarUrl() != null && !profile.avatarUrl().isBlank()) {
-            avatarMap.put(profile.initials().toLowerCase(),
-                    new AvatarInfo(profile.avatarUrl(), profile.backgroundColorHex()));
-        }
-
-        // Add avatars from connected players (following list)
-        if (profile.following() != null) {
-            for (FollowedUser followed : profile.following()) {
-                if (followed.initials() != null && followed.avatarUrl() != null && !followed.avatarUrl().isBlank()) {
-                    avatarMap.put(followed.initials().toLowerCase(),
-                            new AvatarInfo(followed.avatarUrl(), followed.backgroundColorHex()));
-                }
+    public List<Badge> fetchUserBadges(int userId) {
+        try {
+            UserBadgesResponse response = fetchWithRetry(
+                    CMS_BASE + "/user_badges/?user_id=" + userId,
+                    UserBadgesResponse.class, 0);
+            if (response != null && response.badges() != null) {
+                return response.badges();
             }
+        } catch (Exception e) {
+            log.warn("Failed to fetch badges for user {}: {}", userId, e.getMessage());
         }
+        return List.of();
+    }
 
-        log.info("Fetched {} avatar entries from user profile", avatarMap.size());
-        return avatarMap;
+    public Integer searchUserPk(String query) {
+        try {
+            PublicUser[] results = fetchWithRetry(
+                    CMS_BASE + "/public_users/?search=" + query,
+                    PublicUser[].class, 0);
+            if (results != null && results.length > 0 && results[0].pk() != null) {
+                return results[0].pk();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to search user pk for '{}': {}", query, e.getMessage());
+        }
+        return null;
     }
 
     private <T> T fetchWithRetry(String url, Class<T> responseType, int retryCount) {
