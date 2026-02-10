@@ -20,15 +20,9 @@ public class PlayerInfoComponent extends Div {
         String imgSrc = (avatarInfo != null && avatarInfo.avatarUrl() != null
                 && !avatarInfo.avatarUrl().isBlank())
                 ? avatarInfo.avatarUrl() : "";
-        if (!imgSrc.isEmpty()) {
-            Image avatar = new Image(imgSrc, username);
-            avatar.addClassName("avatar-img");
-            avatarDiv.add(avatar);
-        } else {
-            Span placeholder = new Span(username.isEmpty() ? "?" : username.substring(0, 1).toUpperCase());
-            placeholder.addClassName("avatar-placeholder");
-            avatarDiv.add(placeholder);
-        }
+        Image avatar = new Image(imgSrc.isEmpty() ? "pinball.svg" : imgSrc, username);
+        avatar.addClassName("avatar-img");
+        avatarDiv.add(avatar);
         add(avatarDiv);
 
         // Name + optional trophy
