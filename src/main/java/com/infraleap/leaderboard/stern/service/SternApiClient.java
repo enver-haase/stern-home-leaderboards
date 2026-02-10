@@ -62,14 +62,20 @@ public class SternApiClient {
                         CMS_BASE + "/game_machines/" + machine.id(),
                         MachineDetail.class, 0);
                 if (details != null) {
+                    // Enrich model with type name from detail endpoint
+                    MachineModel enrichedModel = machine.model();
+                    if (details.modelTypeName() != null && enrichedModel != null) {
+                        enrichedModel = new MachineModel(enrichedModel.title(), details.modelTypeName());
+                    }
                     return new Machine(
                             machine.id(),
                             machine.archived(),
                             details.online() != null ? details.online() : machine.online(),
                             details.lastPlayed() != null ? details.lastPlayed() : machine.lastPlayed(),
-                            machine.model(),
+                            enrichedModel,
                             machine.address(),
-                            details.techAlerts()
+                            details.techAlerts(),
+                            details.codeVersion()
                     );
                 }
             } catch (Exception e) {
