@@ -11,13 +11,15 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class MachineCard extends Div {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 
     public MachineCard(Machine machine, HighScoreResponse scores,
-                       Map<String, AvatarInfo> avatars, Set<String> newScoreIds) {
+                       Map<String, AvatarInfo> avatars, Set<String> newScoreIds,
+                       Consumer<String> onPlayerClick) {
         addClassName("machine-card");
 
         MachineTitle title = machine.model() != null ? machine.model().title() : null;
@@ -94,7 +96,7 @@ public class MachineCard extends Div {
         add(header);
 
         // High scores
-        add(new HighScoresTable(scores, avatars, newScoreIds));
+        add(new HighScoresTable(scores, avatars, newScoreIds, onPlayerClick));
 
         // Last played
         Div lastPlayed = new Div();

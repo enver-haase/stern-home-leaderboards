@@ -5,7 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record FollowedUser(
+        Integer pk,
+        String username,
         String initials,
         @JsonProperty("avatar_url") String avatarUrl,
-        @JsonProperty("background_color_hex") String backgroundColorHex
+        @JsonProperty("background_color_hex") String backgroundColorHex,
+        @JsonProperty("location_info") String locationInfo
 ) {}

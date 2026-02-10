@@ -1,10 +1,10 @@
 package com.infraleap.leaderboard.ui;
 
-import com.infraleap.leaderboard.stern.domain.Machine;
-import com.infraleap.leaderboard.stern.domain.MachineTitle;
+import com.infraleap.leaderboard.stern.domain.*;
 import com.infraleap.leaderboard.stern.service.LeaderboardDataService;
 import com.infraleap.leaderboard.ui.broadcast.LeaderboardBroadcaster;
 import com.infraleap.leaderboard.ui.component.HighScoresTable;
+import com.infraleap.leaderboard.ui.component.PlayerProfileDialog;
 import com.infraleap.leaderboard.ui.component.StatusDot;
 import com.infraleap.leaderboard.ui.component.TechAlertsPopup;
 import com.vaadin.flow.component.AttachEvent;
@@ -130,7 +130,8 @@ public class FullscreenView extends Div implements HasUrlParameter<Long>, HasDyn
         tableContainer.add(new HighScoresTable(
                 dataService.getHighScores(machineId),
                 dataService.getAvatars(),
-                dataService.getNewScoreIds(machineId)
+                dataService.getNewScoreIds(machineId),
+                this::showPlayerProfile
         ));
         scoresSection.add(tableContainer);
         content.add(scoresSection);
@@ -144,6 +145,21 @@ public class FullscreenView extends Div implements HasUrlParameter<Long>, HasDyn
         content.add(footer);
 
         add(content);
+    }
+
+    private void showPlayerProfile(String username) {
+        PlayerProfileData profile = dataService.fetchEnrichedProfile(username);
+        if (profile == null) {
+            AvatarInfo avatar = dataService.getAvatars().get(username.toLowerCase());
+            profile = new PlayerProfileData(
+                    username, username,
+                    avatar != null ? avatar.avatarUrl() : null,
+                    avatar != null ? avatar.backgroundColor() : null,
+                    null, null,
+                    PlayerProfileData.Tier.UNKNOWN,
+                    null);
+        }
+        new PlayerProfileDialog(username, profile).open();
     }
 
     private static String formatFullDate(String isoDate) {

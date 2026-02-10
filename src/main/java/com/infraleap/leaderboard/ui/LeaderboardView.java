@@ -1,10 +1,13 @@
 package com.infraleap.leaderboard.ui;
 
 import com.infraleap.leaderboard.config.LeaderboardProperties;
+import com.infraleap.leaderboard.stern.domain.AvatarInfo;
 import com.infraleap.leaderboard.stern.domain.Machine;
+import com.infraleap.leaderboard.stern.domain.PlayerProfileData;
 import com.infraleap.leaderboard.stern.service.LeaderboardDataService;
 import com.infraleap.leaderboard.ui.broadcast.LeaderboardBroadcaster;
 import com.infraleap.leaderboard.ui.component.MachineCard;
+import com.infraleap.leaderboard.ui.component.PlayerProfileDialog;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
@@ -85,10 +88,26 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
                     machine,
                     dataService.getHighScores(machine.safeId()),
                     dataService.getAvatars(),
-                    dataService.getNewScoreIds(machine.safeId())
+                    dataService.getNewScoreIds(machine.safeId()),
+                    this::showPlayerProfile
             );
             machinesContainer.add(card);
         }
+    }
+
+    private void showPlayerProfile(String username) {
+        PlayerProfileData profile = dataService.fetchEnrichedProfile(username);
+        if (profile == null) {
+            AvatarInfo avatar = dataService.getAvatars().get(username.toLowerCase());
+            profile = new PlayerProfileData(
+                    username, username,
+                    avatar != null ? avatar.avatarUrl() : null,
+                    avatar != null ? avatar.backgroundColor() : null,
+                    null, null,
+                    PlayerProfileData.Tier.UNKNOWN,
+                    null);
+        }
+        new PlayerProfileDialog(username, profile).open();
     }
 
     private void showNewScoreNotification(String message) {

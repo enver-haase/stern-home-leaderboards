@@ -12,10 +12,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class HighScoresTable extends Div {
 
-    public HighScoresTable(HighScoreResponse scores, Map<String, AvatarInfo> avatars, Set<String> newScoreIds) {
+    public HighScoresTable(HighScoreResponse scores, Map<String, AvatarInfo> avatars,
+                           Set<String> newScoreIds, Consumer<String> onPlayerClick) {
         addClassName("high-scores-section");
 
         if (scores == null || scores.highScores() == null || scores.highScores().isEmpty()) {
@@ -68,6 +70,13 @@ public class HighScoresTable extends Div {
             scoreCell.getClassList().add("table-cell");
             scoreCell.getClassList().add("score-cell");
             row.appendChild(scoreCell);
+
+            // Click handler for player profile
+            if (onPlayerClick != null) {
+                String clickUsername = username;
+                row.getStyle().set("cursor", "pointer");
+                row.addEventListener("click", event -> onPlayerClick.accept(clickUsername));
+            }
 
             tbody.appendChild(row);
         }
