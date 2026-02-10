@@ -17,7 +17,7 @@ public class SternApiClient {
 
     private static final Logger log = LoggerFactory.getLogger(SternApiClient.class);
     private static final String CMS_BASE = "https://cms.prd.sternpinball.io/api/v1/portal";
-    private static final String TEAMS_BASE = "https://api.prd.sternpinball.io/api/v1/portal";
+    private static final String API_V2_BASE = "https://api.prd.sternpinball.io/api/v2/portal";
     private static final int MAX_RETRIES = 2;
 
     private final SternAuthService authService;
@@ -85,20 +85,36 @@ public class SternApiClient {
                 HighScoreResponse.class, 0);
     }
 
-    public Map<String, AvatarInfo> fetchAvatars(long locationId) {
-        GameTeamsResponse response = fetchWithRetry(
-                TEAMS_BASE + "/game_teams/?location_id=" + locationId,
-                GameTeamsResponse.class, 0);
+    public Map<String, AvatarInfo> fetchAvatars() {
+        UserDetailResponse response = fetchWithRetry(
+                API_V2_BASE + "/user_detail/",
+                UserDetailResponse.class, 0);
 
         Map<String, AvatarInfo> avatarMap = new HashMap<>();
-        if (response != null && response.team() != null) {
-            for (TeamMember member : response.team()) {
-                if (member.username() != null) {
-                    avatarMap.put(member.username().toLowerCase(),
-                            new AvatarInfo(member.avatarUrl(), member.backgroundColor()));
+        if (response == null || response.user() == null || response.user().profile() == null) {
+            log.warn("user_detail response has no profile data");
+            return avatarMap;
+        }
+
+        UserProfile profile = response.user().profile();
+
+        // Add the logged-in user's own avatar
+        if (profile.initials() != null && profile.avatarUrl() != null && !profile.avatarUrl().isBlank()) {
+            avatarMap.put(profile.initials().toLowerCase(),
+                    new AvatarInfo(profile.avatarUrl(), profile.backgroundColorHex()));
+        }
+
+        // Add avatars from connected players (following list)
+        if (profile.following() != null) {
+            for (FollowedUser followed : profile.following()) {
+                if (followed.initials() != null && followed.avatarUrl() != null && !followed.avatarUrl().isBlank()) {
+                    avatarMap.put(followed.initials().toLowerCase(),
+                            new AvatarInfo(followed.avatarUrl(), followed.backgroundColorHex()));
                 }
             }
         }
+
+        log.info("Fetched {} avatar entries from user profile", avatarMap.size());
         return avatarMap;
     }
 
