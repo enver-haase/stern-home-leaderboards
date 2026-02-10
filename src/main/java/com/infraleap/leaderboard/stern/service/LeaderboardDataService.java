@@ -55,18 +55,11 @@ public class LeaderboardDataService {
             }
             this.machines = fetchedMachines;
 
-            // Fetch avatars from first machine's location
-            long locationId = fetchedMachines.stream()
-                    .filter(m -> m.address() != null && m.address().locationId() != null && m.address().locationId() > 0)
-                    .findFirst()
-                    .map(m -> m.address().locationId())
-                    .orElse(0L);
-            if (locationId > 0) {
-                try {
-                    this.avatars = apiClient.fetchAvatars(locationId);
-                } catch (Exception e) {
-                    log.warn("Failed to fetch avatars: {}", e.getMessage());
-                }
+            // Fetch avatars from user profile (v2 API)
+            try {
+                this.avatars = apiClient.fetchAvatars();
+            } catch (Exception e) {
+                log.warn("Failed to fetch avatars: {}", e.getMessage());
             }
 
             // Fetch high scores for each machine and detect new scores
