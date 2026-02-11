@@ -39,16 +39,6 @@ public class MachineCard extends Div {
             getStyle().set("border-style", "solid");
         }
 
-        // Status indicator
-        Div statusIndicator = new Div();
-        statusIndicator.addClassName("status-indicator");
-        statusIndicator.add(new StatusDot(machine.isOnline()));
-        List<TechAlert> alerts = machine.techAlerts();
-        if (alerts != null && !alerts.isEmpty()) {
-            statusIndicator.add(new TechAlertsPopup(alerts));
-        }
-        add(statusIndicator);
-
         // Game logo (clickable → fullscreen)
         Div header = new Div();
         header.addClassName("machine-header");
@@ -72,7 +62,7 @@ public class MachineCard extends Div {
             header.add(nameLabel);
         }
 
-        // Model type + software version info (bottom right of logo area)
+        // Model type + version (left-aligned, right of logo)
         String modelType = machine.model() != null ? machine.model().modelTypeName() : null;
         String version = machine.codeVersion();
         if (modelType != null || version != null) {
@@ -90,6 +80,16 @@ public class MachineCard extends Div {
             }
             header.add(machineInfo);
         }
+
+        // Status indicator (far right: tech alerts then dot)
+        Div statusIndicator = new Div();
+        statusIndicator.addClassName("status-indicator");
+        List<TechAlert> alerts = machine.techAlerts();
+        if (alerts != null && !alerts.isEmpty()) {
+            statusIndicator.add(new TechAlertsPopup(alerts));
+        }
+        statusIndicator.add(new StatusDot(machine.isOnline()));
+        header.add(statusIndicator);
 
         add(header);
 
