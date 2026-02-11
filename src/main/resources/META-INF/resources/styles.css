@@ -133,18 +133,13 @@ a:hover {
   z-index: 2;
 }
 
-/* Status indicator */
+/* Status indicator (far right of header) */
 .status-indicator {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-}
-
-.machine-card.with-background .status-indicator {
-  position: absolute;
-  top: 1rem;
-  right: 2.5rem;
-  z-index: 3;
+  margin-left: auto;
 }
 
 .status-dot-online,
@@ -167,31 +162,32 @@ a:hover {
 .last-played {
   font-size: 0.85rem;
   color: #ccc;
-  margin-top: 0.5rem;
+  margin-top: 0rem;
 }
 .machine-card.with-background .last-played {
-  position: absolute;
-  bottom: 1rem;
-  right: 2.5rem;
+  text-align: right;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  z-index: 3;
 }
 
 /* Machine header / logo */
 .machine-header {
   display: flex;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
+  min-width: 0;
 }
 
 .game-logo {
   height: 60px;
   width: auto;
+  max-width: 60%;
+  object-fit: contain;
   margin-right: 1rem;
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: 4px;
+  flex-shrink: 1;
 }
 .game-logo:hover {
   transform: scale(1.05);
@@ -209,14 +205,15 @@ a:hover {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
 }
 
-/* Machine info (model type + version) */
+/* Machine info (model type + version, left-aligned after logo) */
 .machine-info {
-  margin-left: auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
+  flex-shrink: 0;
   gap: 2px;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
 }
 .machine-type {
   font-size: 0.8rem;
@@ -232,13 +229,13 @@ a:hover {
    High Scores Table
    ============================================================ */
 .high-scores-section {
-  margin-top: 1rem;
+  margin-top: 0;
 }
 
 .high-scores-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 1rem;
+  margin-top: 0;
   background: rgba(0, 0, 0, 0.3);
   border: none;
   table-layout: fixed;
@@ -654,13 +651,8 @@ vaadin-notification-card {
   .machine-card {
     padding: 1rem;
   }
-  .machine-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
   .game-logo {
-    margin-bottom: 1rem;
-    margin-right: 0;
+    height: 50px;
   }
   .high-scores-table {
     font-size: 0.85rem;
