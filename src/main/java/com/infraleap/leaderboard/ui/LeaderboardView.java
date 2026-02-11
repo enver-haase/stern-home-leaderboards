@@ -55,6 +55,9 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
             });
         });
 
+        // Startup confetti to verify the library is linked correctly
+        ui.access(this::triggerConfetti);
+
         if (!props.disableAutoscroll()) {
             startAutoScroll(ui);
         }
