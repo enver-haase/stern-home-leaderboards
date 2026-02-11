@@ -20,8 +20,17 @@ public class TechAlertsPopup extends Div {
     public TechAlertsPopup(List<TechAlert> techAlerts) {
         addClassName("tech-alerts-container");
 
+        // Find the most recent "No Alerts" timestamp — alerts before it are cleared
+        String latestClearDate = techAlerts.stream()
+                .filter(a -> "No Alerts".equals(a.message()) && a.dateOfEvent() != null)
+                .map(TechAlert::dateOfEvent)
+                .max(String::compareTo)
+                .orElse(null);
+
         List<TechAlert> realAlerts = techAlerts.stream()
                 .filter(a -> a.message() != null && !"No Alerts".equals(a.message()))
+                .filter(a -> latestClearDate == null || a.dateOfEvent() == null
+                        || a.dateOfEvent().compareTo(latestClearDate) > 0)
                 .toList();
 
         if (realAlerts.isEmpty()) return;
