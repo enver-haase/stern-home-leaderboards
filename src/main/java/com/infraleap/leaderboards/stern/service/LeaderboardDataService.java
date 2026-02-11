@@ -39,7 +39,7 @@ public class LeaderboardDataService {
         Thread.startVirtualThread(this::refreshAll);
     }
 
-    @Scheduled(fixedDelayString = "${leaderboards.data-refresh-minutes:60}", timeUnit = TimeUnit.MINUTES)
+    @Scheduled(fixedDelayString = "${leaderboards.data-refresh-minutes:5}", timeUnit = TimeUnit.MINUTES)
     public void scheduledRefresh() {
         refreshAll();
     }
