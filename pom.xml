@@ -3,10 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
     <!-- Project from https://start.vaadin.com/fbb0dc25-8cc0-4669-ada2-8a7505764546 -->
     <groupId>com.infraleap</groupId>
-    <artifactId>stern-home-leaderboard</artifactId>
+    <artifactId>stern-home-leaderboards</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>Stern Home Leaderboard</name>
+    <name>Stern Home Leaderboards</name>
     
     <properties>
         <java.version>21</java.version>
