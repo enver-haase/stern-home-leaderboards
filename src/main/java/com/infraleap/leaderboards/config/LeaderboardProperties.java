@@ -17,7 +17,7 @@ public record LeaderboardProperties(
     public LeaderboardProperties {
         if (defaultCountry == null || defaultCountry.isBlank()) defaultCountry = "US";
         if (defaultContinent == null || defaultContinent.isBlank()) defaultContinent = "NA";
-        if (dataRefreshMinutes <= 0) dataRefreshMinutes = 60;
+        if (dataRefreshMinutes <= 0) dataRefreshMinutes = 5;
         if (gridColumns <= 0) gridColumns = 1;
     }
 }
