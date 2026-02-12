@@ -5,7 +5,6 @@ import com.infraleap.leaderboards.stern.domain.MachineTitle;
 import com.infraleap.leaderboards.stern.service.LeaderboardDataService;
 import com.infraleap.leaderboards.ui.broadcast.LeaderboardBroadcaster;
 import com.infraleap.leaderboards.ui.component.HighScoresTable;
-import com.infraleap.leaderboards.ui.component.StatusDot;
 import com.infraleap.leaderboards.ui.component.TechAlertsPopup;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
@@ -22,13 +21,12 @@ import com.vaadin.flow.shared.Registration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Locale;
 
 @Route("fullscreen")
 public class FullscreenView extends Div implements HasUrlParameter<Long>, HasDynamicTitle {
 
-    private static final DateTimeFormatter FULL_DATE_FORMAT =
-            DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy, hh:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter DISPLAY_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a");
 
     private final LeaderboardDataService dataService;
     private final LeaderboardBroadcaster broadcaster;
@@ -109,13 +107,12 @@ public class FullscreenView extends Div implements HasUrlParameter<Long>, HasDyn
             header.add(logo);
         }
 
-        Div statusContainer = new Div();
-        statusContainer.addClassName("fullscreen-status-container");
-        statusContainer.add(new StatusDot(machine.isOnline()));
         if (machine.techAlerts() != null && !machine.techAlerts().isEmpty()) {
+            Div statusContainer = new Div();
+            statusContainer.addClassName("fullscreen-status-container");
             statusContainer.add(new TechAlertsPopup(machine.techAlerts()));
+            header.add(statusContainer);
         }
-        header.add(statusContainer);
         content.add(header);
 
         // Scores
@@ -138,7 +135,7 @@ public class FullscreenView extends Div implements HasUrlParameter<Long>, HasDyn
         // Footer
         Div footer = new Div();
         footer.addClassName("fullscreen-footer");
-        Span lastPlayed = new Span("Last Played: " + formatFullDate(machine.lastPlayed()));
+        Span lastPlayed = new Span("Last Played: " + formatDateTime(machine.lastPlayed()));
         lastPlayed.addClassName("last-played-large");
         footer.add(lastPlayed);
         content.add(footer);
@@ -146,11 +143,11 @@ public class FullscreenView extends Div implements HasUrlParameter<Long>, HasDyn
         add(content);
     }
 
-    private static String formatFullDate(String isoDate) {
+    private static String formatDateTime(String isoDate) {
         if (isoDate == null || isoDate.isBlank()) return "Never";
         try {
             LocalDateTime dt = LocalDateTime.parse(isoDate.replace("Z", "").split("\\+")[0]);
-            return dt.format(FULL_DATE_FORMAT);
+            return dt.format(DISPLAY_FORMAT) + " UTC";
         } catch (DateTimeParseException e) {
             return isoDate;
         }
