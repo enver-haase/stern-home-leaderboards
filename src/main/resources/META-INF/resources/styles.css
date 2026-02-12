@@ -333,21 +333,22 @@ a:hover {
 
 /* Trophy icon */
 .trophy-icon {
-  font-size: 1rem;
-  animation: trophy-bounce 1.5s ease-in-out infinite;
-  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
+  font-size: 1.2rem;
+  display: inline-block;
+  animation: trophy-bounce 0.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.9));
 }
 
 @keyframes trophy-bounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.15); }
 }
 
 /* New score highlighting */
 .table-row.new-score {
   background: linear-gradient(90deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1)) !important;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
-  animation: new-score-glow 2s ease-in-out;
+  animation: new-score-glow 2s ease-in-out infinite;
 }
 .table-row.new-score:hover {
   background: linear-gradient(90deg, rgba(255, 215, 0, 0.4), rgba(255, 215, 0, 0.2)) !important;
@@ -468,6 +469,17 @@ a:hover {
 
 .toast-message {
   font-weight: 500;
+}
+
+.toast-close {
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.7;
+  padding: 0 4px;
+  margin-left: auto;
+}
+.toast-close:hover {
+  opacity: 1;
 }
 
 @keyframes toast-bounce {
