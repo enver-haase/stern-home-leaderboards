@@ -65,9 +65,6 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
             });
         });
 
-        // Startup fireworks
-        ui.access(this::triggerConfetti);
-
         if (!props.disableAutoscroll()) {
             startAutoScroll(ui);
         }
@@ -116,7 +113,7 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
 
         Notification notification = new Notification();
         notification.addThemeVariants(NotificationVariant.LUMO_PRIMARY);
-        notification.setDuration(180_000);
+        notification.setDuration(props.notificationAutoCloseSeconds() * 1000);
         notification.setPosition(Notification.Position.TOP_END);
 
         Span icon = new Span("\uD83C\uDFC6");
@@ -150,8 +147,9 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
     }
 
     private void triggerConfetti() {
+        int durationMs = props.fireworksDurationSeconds() * 1000;
         getUI().ifPresent(ui -> ui.getPage().executeJs(
-                "if (window.triggerCelebration) { window.triggerCelebration(); }"
+                "if (window.triggerCelebration) { window.triggerCelebration($0); }", durationMs
         ));
     }
 
