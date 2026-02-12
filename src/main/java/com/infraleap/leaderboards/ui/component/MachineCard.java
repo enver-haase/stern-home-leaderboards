@@ -14,7 +14,8 @@ import java.util.Set;
 
 public class MachineCard extends Div {
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+    private static final DateTimeFormatter DISPLAY_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a");
 
     public MachineCard(Machine machine, HighScoreResponse scores,
                        Map<String, AvatarInfo> avatars, Set<String> newScoreIds) {
@@ -81,15 +82,14 @@ public class MachineCard extends Div {
             header.add(machineInfo);
         }
 
-        // Status indicator (far right: tech alerts then dot)
-        Div statusIndicator = new Div();
-        statusIndicator.addClassName("status-indicator");
+        // Status indicator (far right: tech alerts only)
         List<TechAlert> alerts = machine.techAlerts();
         if (alerts != null && !alerts.isEmpty()) {
+            Div statusIndicator = new Div();
+            statusIndicator.addClassName("status-indicator");
             statusIndicator.add(new TechAlertsPopup(alerts));
+            header.add(statusIndicator);
         }
-        statusIndicator.add(new StatusDot(machine.isOnline()));
-        header.add(statusIndicator);
 
         add(header);
 
@@ -99,15 +99,15 @@ public class MachineCard extends Div {
         // Last played
         Div lastPlayed = new Div();
         lastPlayed.addClassName("last-played");
-        lastPlayed.setText("Last Played: " + formatDate(machine.lastPlayed()));
+        lastPlayed.setText("Last Played: " + formatDateTime(machine.lastPlayed()));
         add(lastPlayed);
     }
 
-    private static String formatDate(String isoDate) {
+    private static String formatDateTime(String isoDate) {
         if (isoDate == null || isoDate.isBlank()) return "Never";
         try {
             LocalDateTime dt = LocalDateTime.parse(isoDate.replace("Z", "").split("\\+")[0]);
-            return dt.format(DATE_FORMAT);
+            return dt.format(DISPLAY_FORMAT) + " UTC";
         } catch (DateTimeParseException e) {
             return isoDate;
         }
