@@ -1,8 +1,8 @@
 import confetti from 'canvas-confetti';
 
 // Single burst for new-score celebrations
-window.triggerCelebration = function() {
-    fireworksShow(30000);
+window.triggerCelebration = function(durationMs) {
+    fireworksShow(durationMs || 30000);
 };
 
 function fireworksShow(durationMs) {
