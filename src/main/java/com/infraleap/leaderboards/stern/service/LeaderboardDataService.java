@@ -21,7 +21,6 @@ public class LeaderboardDataService {
 
     private final SternApiClient apiClient;
     private final LeaderboardBroadcaster broadcaster;
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private volatile List<Machine> machines = List.of();
     private final ConcurrentHashMap<Long, HighScoreResponse> highScores = new ConcurrentHashMap<>();
@@ -48,6 +47,9 @@ public class LeaderboardDataService {
         try {
             log.info("Refreshing leaderboards data from Stern API...");
 
+            // Clear new-score highlights from previous cycle
+            newScoreIds.clear();
+
             List<Machine> fetchedMachines = apiClient.fetchMachines();
             if (fetchedMachines.isEmpty()) {
                 log.warn("No machines fetched from Stern API");
@@ -63,15 +65,12 @@ public class LeaderboardDataService {
             }
 
             // Fetch high scores for each machine and detect new scores
-            String newScoreMessage = null;
+            List<String> newScoreMessages = new ArrayList<>();
             for (Machine machine : fetchedMachines) {
                 try {
                     HighScoreResponse scores = apiClient.fetchHighScores(machine.safeId());
                     if (scores != null) {
-                        String detected = detectNewScores(machine, scores);
-                        if (detected != null) {
-                            newScoreMessage = detected;
-                        }
+                        newScoreMessages.addAll(detectNewScores(machine, scores));
                         highScores.put(machine.safeId(), scores);
                         // Store current scores as previous for next comparison
                         if (scores.highScores() != null) {
@@ -86,8 +85,8 @@ public class LeaderboardDataService {
             log.info("Leaderboards data refreshed: {} machines", fetchedMachines.size());
 
             // Broadcast update to all connected UIs
-            if (newScoreMessage != null) {
-                broadcaster.broadcast(newScoreMessage);
+            if (!newScoreMessages.isEmpty()) {
+                broadcaster.broadcast(String.join("\n", newScoreMessages));
             } else {
                 broadcaster.broadcast("REFRESH");
             }
@@ -96,11 +95,11 @@ public class LeaderboardDataService {
         }
     }
 
-    private String detectNewScores(Machine machine, HighScoreResponse current) {
-        if (current.highScores() == null) return null;
+    private List<String> detectNewScores(Machine machine, HighScoreResponse current) {
+        if (current.highScores() == null) return List.of();
 
         List<HighScoreEntry> prev = previousScores.get(machine.safeId());
-        if (prev == null) return null; // First fetch, nothing to compare
+        if (prev == null) return List.of(); // First fetch, nothing to compare
 
         Set<String> prevIds = new HashSet<>();
         for (HighScoreEntry e : prev) {
@@ -108,7 +107,7 @@ public class LeaderboardDataService {
         }
 
         Set<String> newIds = new HashSet<>();
-        String newScoreMessage = null;
+        List<String> messages = new ArrayList<>();
         for (HighScoreEntry entry : current.highScores()) {
             String entryId = scoreEntryId(entry);
             if (!prevIds.contains(entryId)) {
@@ -117,20 +116,15 @@ public class LeaderboardDataService {
                 String scoreFmt = entry.score() != null ? entry.score() : "?";
                 String machineName = machine.model() != null && machine.model().title() != null
                         ? machine.model().title().name() : "Unknown";
-                newScoreMessage = "NEW_SCORE:" + machineName + ":" + playerName + ":" + scoreFmt;
+                messages.add("NEW_SCORE:" + machineName + ":" + playerName + ":" + scoreFmt);
             }
         }
 
         if (!newIds.isEmpty()) {
             newScoreIds.put(machine.safeId(), newIds);
-            // Clear highlights after 10 seconds
-            scheduler.schedule(() -> {
-                newScoreIds.remove(machine.safeId());
-                broadcaster.broadcast("REFRESH");
-            }, 10, TimeUnit.SECONDS);
         }
 
-        return newScoreMessage;
+        return messages;
     }
 
     private String scoreEntryId(HighScoreEntry e) {
@@ -161,4 +155,5 @@ public class LeaderboardDataService {
     public Set<String> getNewScoreIds(long machineId) {
         return newScoreIds.getOrDefault(machineId, Set.of());
     }
+
 }

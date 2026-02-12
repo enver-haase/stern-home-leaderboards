@@ -17,7 +17,10 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.shared.Registration;
 
+import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Route("")
 public class LeaderboardView extends Div implements HasDynamicTitle {
@@ -27,6 +30,7 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
     private final LeaderboardProperties props;
     private final Div machinesContainer = new Div();
     private Registration broadcasterRegistration;
+    private final List<Notification> activeNewScoreNotifications = new ArrayList<>();
 
     public LeaderboardView(LeaderboardDataService dataService,
                            LeaderboardBroadcaster broadcaster,
@@ -48,14 +52,20 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
         UI ui = attachEvent.getUI();
         broadcasterRegistration = broadcaster.register(message -> {
             ui.access(() -> {
+                dismissNewScoreNotifications();
                 buildCards();
-                if (message.startsWith("NEW_SCORE:")) {
-                    showNewScoreNotification(message);
+                if (message.contains("NEW_SCORE:")) {
+                    for (String line : message.split("\n")) {
+                        if (line.startsWith("NEW_SCORE:")) {
+                            showNewScoreNotification(line);
+                        }
+                    }
+                    triggerConfetti();
                 }
             });
         });
 
-        // Startup confetti to verify the library is linked correctly
+        // Startup fireworks
         ui.access(this::triggerConfetti);
 
         if (!props.disableAutoscroll()) {
@@ -99,28 +109,44 @@ public class LeaderboardView extends Div implements HasDynamicTitle {
         String[] parts = message.split(":", 4);
         String text;
         if (parts.length >= 4) {
-            text = "New high score on " + parts[1] + "! " + parts[2] + " scored " + parts[3] + "!";
+            text = "New high score on " + parts[1] + "! " + parts[2] + " scored " + formatScore(parts[3]) + "!";
         } else {
             text = "New high score detected!";
         }
 
         Notification notification = new Notification();
         notification.addThemeVariants(NotificationVariant.LUMO_PRIMARY);
-        notification.setDuration(4000);
+        notification.setDuration(180_000);
         notification.setPosition(Notification.Position.TOP_END);
 
         Span icon = new Span("\uD83C\uDFC6");
         icon.addClassName("toast-icon");
         Span textSpan = new Span(text);
         textSpan.addClassName("toast-message");
+        Span closeBtn = new Span("\u2715");
+        closeBtn.addClassName("toast-close");
+        closeBtn.getElement().addEventListener("click", e -> notification.close());
 
-        HorizontalLayout layout = new HorizontalLayout(icon, textSpan);
+        HorizontalLayout layout = new HorizontalLayout(icon, textSpan, closeBtn);
         layout.addClassName("toast-content");
         notification.add(layout);
+        activeNewScoreNotifications.add(notification);
         notification.open();
+    }
 
-        // Trigger confetti celebration
-        triggerConfetti();
+    private void dismissNewScoreNotifications() {
+        for (Notification n : activeNewScoreNotifications) {
+            n.close();
+        }
+        activeNewScoreNotifications.clear();
+    }
+
+    private static String formatScore(String score) {
+        try {
+            return NumberFormat.getNumberInstance(Locale.US).format(Long.parseLong(score));
+        } catch (NumberFormatException e) {
+            return score;
+        }
     }
 
     private void triggerConfetti() {
