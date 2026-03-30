@@ -280,7 +280,7 @@ a:hover {
   text-align: right;
   font-weight: bold;
   font-family: 'Courier New', monospace;
-  font-size: 0.95rem;
+  font-size: 2.8rem;
   min-width: 120px;
   padding-right: 0.75rem;
 }
@@ -300,8 +300,8 @@ a:hover {
 }
 
 .player-avatar {
-  width: 32px;
-  height: 32px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -318,14 +318,14 @@ a:hover {
 }
 .avatar-placeholder {
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 2.2rem;
   font-weight: bold;
 }
 
 .player-name {
   color: #fff;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 2.6rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -607,11 +607,11 @@ vaadin-notification-card {
   height: 50px;
 }
 .fullscreen-scores .player-name {
-  font-size: 1.3rem;
+  font-size: 3.6rem;
   margin-left: 1rem;
 }
 .fullscreen-scores .score-cell {
-  font-size: 1.4rem;
+  font-size: 4rem;
 }
 
 /* Fullscreen footer */
@@ -678,14 +678,14 @@ vaadin-notification-card {
     gap: 0.25rem;
   }
   .player-avatar {
-    width: 28px;
-    height: 28px;
+    width: 72px;
+    height: 72px;
   }
   .player-name {
-    font-size: 0.8rem;
+    font-size: 2.2rem;
   }
   .score-cell {
-    font-size: 0.85rem;
+    font-size: 2.4rem;
     min-width: 100px;
   }
 
