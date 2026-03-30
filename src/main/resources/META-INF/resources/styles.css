@@ -192,7 +192,7 @@ a:hover {
 .game-logo:hover {
   transform: scale(1.05);
   filter: drop-shadow(2px 2px 8px rgba(229, 57, 53, 0.6))
-          drop-shadow(0 0 10px rgba(229, 57, 53, 0.4));
+  drop-shadow(0 0 10px rgba(229, 57, 53, 0.4));
 }
 .game-logo:active {
   transform: scale(0.98);
@@ -280,7 +280,7 @@ a:hover {
   text-align: right;
   font-weight: bold;
   font-family: 'Courier New', monospace;
-  font-size: 2.8rem;
+  font-size: 0.95rem;
   min-width: 120px;
   padding-right: 0.75rem;
 }
@@ -300,8 +300,8 @@ a:hover {
 }
 
 .player-avatar {
-  width: 88px;
-  height: 88px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -318,14 +318,14 @@ a:hover {
 }
 .avatar-placeholder {
   color: #fff;
-  font-size: 2.2rem;
+  font-size: 0.8rem;
   font-weight: bold;
 }
 
 .player-name {
   color: #fff;
   font-weight: 500;
-  font-size: 2.6rem;
+  font-size: 0.9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -333,6 +333,9 @@ a:hover {
 
 /* Trophy icon */
 .trophy-icon {
+  font-size: 1rem;
+  animation: trophy-bounce 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
   font-size: 1.2rem;
   display: inline-block;
   animation: trophy-bounce 0.6s ease-in-out infinite;
@@ -340,6 +343,8 @@ a:hover {
 }
 
 @keyframes trophy-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-4px) scale(1.15); }
 }
@@ -348,6 +353,7 @@ a:hover {
 .table-row.new-score {
   background: linear-gradient(90deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1)) !important;
   box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  animation: new-score-glow 2s ease-in-out;
   animation: new-score-glow 2s ease-in-out infinite;
 }
 .table-row.new-score:hover {
@@ -545,7 +551,7 @@ vaadin-notification-card {
 .fullscreen-game-logo:hover {
   transform: scale(1.03);
   filter: drop-shadow(0 4px 12px rgba(229, 57, 53, 0.6))
-          drop-shadow(0 0 15px rgba(229, 57, 53, 0.4));
+  drop-shadow(0 0 15px rgba(229, 57, 53, 0.4));
 }
 .fullscreen-game-logo:active {
   transform: scale(0.98);
@@ -607,11 +613,11 @@ vaadin-notification-card {
   height: 50px;
 }
 .fullscreen-scores .player-name {
-  font-size: 3.6rem;
+  font-size: 1.3rem;
   margin-left: 1rem;
 }
 .fullscreen-scores .score-cell {
-  font-size: 4rem;
+  font-size: 1.4rem;
 }
 
 /* Fullscreen footer */
@@ -678,14 +684,14 @@ vaadin-notification-card {
     gap: 0.25rem;
   }
   .player-avatar {
-    width: 72px;
-    height: 72px;
+    width: 28px;
+    height: 28px;
   }
   .player-name {
-    font-size: 2.2rem;
+    font-size: 0.8rem;
   }
   .score-cell {
-    font-size: 2.4rem;
+    font-size: 0.85rem;
     min-width: 100px;
   }
 
