@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -144,7 +145,7 @@ public class SternApiClient {
                     .header("Location", locationHeader)
                     .retrieve()
                     .bodyToMono(responseType)
-                    .block();
+                    .block(Duration.ofSeconds(30));
         } catch (WebClientResponseException e) {
             if ((e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403)
                     && retryCount < MAX_RETRIES) {

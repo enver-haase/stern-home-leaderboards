@@ -22,6 +22,12 @@ public class PlayerInfoComponent extends Div {
                 ? avatarInfo.avatarUrl() : "";
         Image avatar = new Image(imgSrc.isEmpty() ? "pinball.svg" : imgSrc, username);
         avatar.addClassName("avatar-img");
+        // If a signed S3 URL expires, fall back to the unsigned base URL
+        if (!imgSrc.isEmpty() && imgSrc.contains("?")) {
+            String baseUrl = imgSrc.substring(0, imgSrc.indexOf('?'));
+            avatar.getElement().setAttribute("onerror",
+                    "if(!this.dataset.retried){this.dataset.retried='1';this.src='" + baseUrl + "';}");
+        }
         avatarDiv.add(avatar);
         add(avatarDiv);
 
