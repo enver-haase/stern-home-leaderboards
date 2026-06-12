@@ -16,9 +16,11 @@ Both `cms.prd` and `api.prd` serve identical data on all endpoints.
 
 ```
 POST https://insider.sternpinball.com/login
-Header: Next-Action: 9d2cf818afff9e2c69368771b521d93585a10433
+Header: Next-Action: <performLogin action ID>
 Body: ["email","password"]
 ```
+
+The `Next-Action` header is a content-addressed Next.js Server Action ID that changes on every Stern frontend redeploy. Discover the current value by GETting `/login`, downloading the `/_next/static/chunks/*.js` files it references, and grepping for `createServerReference)("<hash>",...,"performLogin")`. `SternAuthService` does this dynamically and caches the result; on auth failure the cache is invalidated and the next attempt re-resolves it.
 
 Returns cookies:
 - `spb-insider-token` — Bearer access token
