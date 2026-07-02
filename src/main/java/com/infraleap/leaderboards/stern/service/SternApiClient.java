@@ -20,6 +20,7 @@ public class SternApiClient {
     private static final String CMS_BASE = "https://cms.prd.sternpinball.io/api/v1/portal";
     private static final String API_V2_BASE = "https://api.prd.sternpinball.io/api/v2/portal";
     private static final int MAX_RETRIES = 2;
+    private static final List<String> MACHINE_GROUP_TYPES = List.of("home", "business");
 
     private final SternAuthService authService;
     private final WebClient webClient;
@@ -46,15 +47,17 @@ public class SternApiClient {
     }
 
     public List<Machine> fetchMachines() {
-        MachinesResponse response = fetchWithRetry(
-                CMS_BASE + "/user_registered_machines/?group_type=home",
-                MachinesResponse.class, 0);
-
-        if (response == null || response.user() == null || response.user().machines() == null) {
-            return List.of();
-        }
-
-        List<Machine> basics = response.user().machines();
+        List<Machine> basics = MACHINE_GROUP_TYPES.stream()
+                .flatMap(groupType -> {
+                    MachinesResponse response = fetchWithRetry(
+                            CMS_BASE + "/user_registered_machines/?group_type=" + groupType,
+                            MachinesResponse.class, 0);
+                    if (response == null || response.user() == null || response.user().machines() == null) {
+                        return List.<Machine>of().stream();
+                    }
+                    return response.user().machines().stream();
+                })
+                .toList();
 
         // Enrich each machine with tech alerts from detail endpoint
         return basics.stream().map(machine -> {

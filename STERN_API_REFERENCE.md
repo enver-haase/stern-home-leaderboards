@@ -53,7 +53,7 @@ Base: `https://cms.prd.sternpinball.io/api/v1/portal`
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /user_registered_machines/?group_type=home` | All registered home machines. Only `group_type=home` is valid; other values return 406. |
+| `GET /user_registered_machines/?group_type=home` | Registered home machines. `group_type=business` returns machines assigned to a business/location; other values return 406. A machine only ever appears under one group type — moving it to a business location (e.g. via the app's "transfer" flow) removes it from `home` entirely. |
 | `GET /game_machines/{id}/` | Machine detail: `online`, `last_played`, `code_version`, `game_model`, `last_seven_day_tech_alerts[]`. Trailing slash required (without → 301). |
 | `GET /game_machines/` | 500 error — listing all machines is not supported |
 | `GET /game_machine_high_scores/?machine_id={id}` | High scores for a specific machine. Requires `machine_id` param. |
