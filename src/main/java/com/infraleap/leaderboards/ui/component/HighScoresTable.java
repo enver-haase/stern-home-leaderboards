@@ -51,7 +51,7 @@ public class HighScoresTable extends Div {
             if (isNew) row.getClassList().add("new-score");
 
             // Rank
-            Element rankCell = createTd(i == 0 ? "GC" : String.valueOf(i + 1));
+            Element rankCell = createTd(i == 0 ? "GC" : String.valueOf(i));
             rankCell.getClassList().add("rank-cell");
             row.appendChild(rankCell);
 

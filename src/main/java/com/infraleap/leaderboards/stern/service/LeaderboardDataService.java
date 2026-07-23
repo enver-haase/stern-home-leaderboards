@@ -88,6 +88,7 @@ public class LeaderboardDataService {
 
             // Broadcast update to all connected UIs
             if (!newScoreMessages.isEmpty()) {
+                log.info("Broadcasting {} new-score celebration(s) to UIs", newScoreMessages.size());
                 broadcaster.broadcast(String.join("\n", newScoreMessages));
             } else {
                 broadcaster.broadcast("REFRESH");
@@ -124,6 +125,10 @@ public class LeaderboardDataService {
 
         if (!newIds.isEmpty()) {
             newScoreIds.put(machine.safeId(), newIds);
+            String machineName = machine.model() != null && machine.model().title() != null
+                    ? machine.model().title().name() : "Unknown";
+            log.info("Detected {} new high score(s) on machine {} ({}): {}",
+                    newIds.size(), machine.safeId(), machineName, messages);
         }
 
         return messages;

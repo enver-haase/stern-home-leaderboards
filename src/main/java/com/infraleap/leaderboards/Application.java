@@ -7,6 +7,8 @@ import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.server.AppShellSettings;
+import com.vaadin.flow.shared.communication.PushMode;
+import com.vaadin.flow.shared.ui.Transport;
 import com.vaadin.flow.theme.lumo.Lumo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -16,7 +18,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EnableConfigurationProperties(LeaderboardProperties.class)
-@Push
+// Force pure WebSocket transport. The default WEBSOCKET_XHR falls back to
+// HTTP-streaming via Servlet30CometSupport behind nginx, which produced the
+// "request object has been recycled" storms and lost NEW_SCORE pushes.
+@Push(value = PushMode.AUTOMATIC, transport = Transport.WEBSOCKET)
 @StyleSheet(Lumo.STYLESHEET)
 @StyleSheet("styles.css")
 @NpmPackage(value = "canvas-confetti", version = "1.9.3")
