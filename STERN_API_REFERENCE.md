@@ -102,6 +102,24 @@ The `online` boolean from both `/user_registered_machines/` and `/game_machines/
 
 The `last_played` timestamp is the most reliable signal for inferring actual connectivity.
 
+## Publication Lag
+
+Stern publishes what happened on a cabinet **long after the game ended**, and the delay differs per
+kind of data. Measured on machine 12856 (Godzilla) for a single session on 2026-09-02:
+
+| Data | Game | Visible in the API | Delay |
+|------|------|--------------------|-------|
+| High score (ROC, 2,164,918,720) | 2026-09-02, last play 18:12:33Z | between 21:46:00Z and 21:51:07Z | ~3 h 35 min |
+| Achievement ("Xilien Battles") from the same session | 2026-09-02 | credited 2026-09-05 21:59:15Z | ~3 days |
+
+Bracketed by our own 5-minute poll: the 21:46:00Z fetch returned the table without the row, the
+21:51:07Z fetch returned it. So the lag is entirely on Stern's side — `last_played` was accurate
+all along, and a score missing right after a game is expected, not a bug.
+
+`last_activity` is **not** a "someone played" signal. On 2026-09-05 four of the five machines
+reported `last_activity` within nine seconds of each other (21:57:11Z–21:57:20Z) — a backend sync
+touching every machine at once, not four simultaneous games.
+
 ## Web App Routes
 
 | Route | Description |
