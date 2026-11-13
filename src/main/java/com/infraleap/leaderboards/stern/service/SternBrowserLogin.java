@@ -7,6 +7,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
+import com.microsoft.playwright.impl.driver.Driver;
 import com.microsoft.playwright.options.WaitUntilState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +16,15 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Signs in to Stern Insider with username and password in a headless Chromium and returns the OIDC
@@ -41,12 +48,18 @@ public class SternBrowserLogin {
             "button[type=submit]", "button:has-text('Continue')", "button:has-text('Sign in')",
             "button:has-text('Log in')", "button:has-text('Next')");
 
+    // Playwright would otherwise download Chromium, Firefox and WebKit on first use (~1.3 GB);
+    // we install only Chromium's headless shell ourselves.
+    private static final Map<String, String> PLAYWRIGHT_ENV = Map.of("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1");
+
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
+    private volatile boolean browserInstalled;
 
     /** The refresh token, or empty if the login failed (the reason is logged). */
     public Optional<String> obtainRefreshToken(String username, String password) {
         long started = System.currentTimeMillis();
-        try (Playwright playwright = Playwright.create();
+        if (!installBrowser()) return Optional.empty();
+        try (Playwright playwright = Playwright.create(new Playwright.CreateOptions().setEnv(PLAYWRIGHT_ENV));
              Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
              BrowserContext context = browser.newContext(new Browser.NewContextOptions()
                      .setViewportSize(1280, 900).setLocale("en-US"))) {
@@ -86,6 +99,33 @@ public class SternBrowserLogin {
         } catch (PlaywrightException e) {
             log.error("Stern browser login failed: {}", e.getMessage().lines().findFirst().orElse(""));
             return Optional.empty();
+        }
+    }
+
+    /** Runs {@code playwright install --only-shell chromium} once per JVM; a no-op if it is already there. */
+    private synchronized boolean installBrowser() {
+        if (browserInstalled) return true;
+        try {
+            ProcessBuilder pb = Driver.ensureDriverInstalled(PLAYWRIGHT_ENV, false).createProcessBuilder();
+            pb.command().addAll(List.of("install", "--only-shell", "chromium"));
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            try (BufferedReader out = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                out.lines().filter(l -> !l.isBlank() && !l.contains("|")).forEach(l -> log.info("playwright install: {}", l));
+            }
+            if (!process.waitFor(10, TimeUnit.MINUTES) || process.exitValue() != 0) {
+                log.error("Installing Chromium for the Stern browser login failed");
+                return false;
+            }
+            browserInstalled = true;
+            return true;
+        } catch (IOException | RuntimeException e) {
+            log.error("Installing Chromium for the Stern browser login failed: {}", e.getMessage());
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 

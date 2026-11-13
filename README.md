@@ -61,7 +61,8 @@ The browser runs only when there is no usable refresh token (first start, or the
 revoked). It takes about 15 s and up to ~550 MB of memory and is closed right after. A failed browser
 login is retried after 15 minutes at the earliest.
 
-On the first browser login Playwright downloads Chromium to `~/.cache/ms-playwright` of the service user.
+On the first browser login the app downloads Chromium's headless shell (~200 MB, no Firefox or WebKit) to
+`~/.cache/ms-playwright` of the service user.
 On Linux, Chromium needs some system libraries once:
 
 ```bash
