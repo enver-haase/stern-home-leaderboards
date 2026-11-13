@@ -14,7 +14,9 @@ public record LeaderboardProperties(
         int gridColumns,
         boolean disableAutoscroll,
         int fireworksDurationSeconds,
-        int notificationAutoCloseSeconds
+        int notificationAutoCloseSeconds,
+        String sternRefreshToken,
+        String sternTokenStore
 ) {
     public LeaderboardProperties {
         if (defaultCountry == null || defaultCountry.isBlank()) defaultCountry = "US";
@@ -23,5 +25,7 @@ public record LeaderboardProperties(
         if (gridColumns <= 0) gridColumns = 1;
         if (fireworksDurationSeconds <= 0) fireworksDurationSeconds = 30;
         if (notificationAutoCloseSeconds <= 0) notificationAutoCloseSeconds = 180;
+        if (sternTokenStore == null || sternTokenStore.isBlank())
+            sternTokenStore = System.getProperty("user.home") + "/.stern-home-leaderboards/refresh-token";
     }
 }

@@ -36,7 +36,9 @@ All settings can be overridden via environment variables:
 | Environment Variable | Default | Description |
 |---|---|---|
 | `STERN_USERNAME` | *(required)* | Stern Insider account email |
-| `STERN_PASSWORD` | *(required)* | Stern Insider account password |
+| `STERN_PASSWORD` | *(required)* | Stern Insider account password (old login, see below) |
+| `STERN_REFRESH_TOKEN` | *(empty)* | Initial OIDC refresh token, see [Stern login](#stern-login) |
+| `STERN_TOKEN_STORE` | `~/.stern-home-leaderboards/refresh-token` | File that keeps the rotated refresh token |
 | `DEFAULT_COUNTRY` | `DE` | Country code for location header |
 | `DEFAULT_CONTINENT` | `EU` | Continent code for location header |
 | `DEFAULT_STATE` | *(empty)* | State code (US users) |
@@ -45,6 +47,28 @@ All settings can be overridden via environment variables:
 | `GRID_COLUMNS` | `1` | Number of columns in the machine grid |
 | `DISABLE_AUTOSCROLL` | `false` | Disable automatic scrolling |
 | `PORT` | `8080` | HTTP server port |
+
+## Stern login
+
+Since November 2026 Insider signs in through OIDC (Descope, authorization code with PKCE) instead of a
+username/password form, so the app can no longer log in by itself. It keeps an OIDC **refresh token**
+instead and trades it for access tokens; the old password login stays as a fallback in case Stern
+switches back.
+
+To get the first refresh token:
+
+1. Sign in at https://insider.sternpinball.com/ in a desktop browser.
+2. Open the developer tools → Application (Chrome) or Storage (Firefox) → Local Storage →
+   `https://insider.sternpinball.com`.
+3. Open the key that starts with `user:https://auth.sternpinball.com/`; its value is JSON. Copy the
+   value of `refresh_token`.
+4. Put it into the token store file (default `~/.stern-home-leaderboards/refresh-token` of the user the
+   service runs as, mode 600) or set `STERN_REFRESH_TOKEN` / `leaderboards.stern-refresh-token`.
+5. Close that browser tab **without** signing out. Signing out revokes the token, and using the same
+   session in the browser may rotate it away from the app.
+
+The app writes every rotated refresh token back to the token store, so this is needed again only when
+the refresh token expires or is revoked. The log then says `Stern token refresh failed`.
 
 ## Production Build
 
