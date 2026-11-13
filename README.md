@@ -36,8 +36,8 @@ All settings can be overridden via environment variables:
 | Environment Variable | Default | Description |
 |---|---|---|
 | `STERN_USERNAME` | *(required)* | Stern Insider account email |
-| `STERN_PASSWORD` | *(required)* | Stern Insider account password (old login, see below) |
-| `STERN_REFRESH_TOKEN` | *(empty)* | Initial OIDC refresh token, see [Stern login](#stern-login) |
+| `STERN_PASSWORD` | *(required)* | Stern Insider account password |
+| `STERN_REFRESH_TOKEN` | *(empty)* | Optional initial OIDC refresh token, see [Stern login](#stern-login) |
 | `STERN_TOKEN_STORE` | `~/.stern-home-leaderboards/refresh-token` | File that keeps the rotated refresh token |
 | `DEFAULT_COUNTRY` | `DE` | Country code for location header |
 | `DEFAULT_CONTINENT` | `EU` | Continent code for location header |
@@ -50,25 +50,27 @@ All settings can be overridden via environment variables:
 
 ## Stern login
 
-Since November 2026 Insider signs in through OIDC (Descope, authorization code with PKCE) instead of a
-username/password form, so the app can no longer log in by itself. It keeps an OIDC **refresh token**
-instead and trades it for access tokens; the old password login stays as a fallback in case Stern
-switches back.
+Since November 2026 Insider signs in through OIDC (Descope, authorization code with PKCE); there is no
+plain HTTP login any more, and Descope's password API is disabled for Stern's project. The app therefore
+signs in with `STERN_USERNAME` / `STERN_PASSWORD` in a headless Chromium (Playwright), takes the OIDC
+**refresh token** the login page leaves in local storage and from then on trades it for access tokens at
+the token endpoint. Every rotated refresh token is written to the token store (default
+`~/.stern-home-leaderboards/refresh-token`, mode 600), so a restart doesn't need a new browser login.
 
-To get the first refresh token:
+The browser runs only when there is no usable refresh token (first start, or the token expired or was
+revoked). It takes about 15 s and up to ~550 MB of memory and is closed right after. A failed browser
+login is retried after 15 minutes at the earliest.
 
-1. Sign in at https://insider.sternpinball.com/ in a desktop browser.
-2. Open the developer tools → Application (Chrome) or Storage (Firefox) → Local Storage →
-   `https://insider.sternpinball.com`.
-3. Open the key that starts with `user:https://auth.sternpinball.com/`; its value is JSON. Copy the
-   value of `refresh_token`.
-4. Put it into the token store file (default `~/.stern-home-leaderboards/refresh-token` of the user the
-   service runs as, mode 600) or set `STERN_REFRESH_TOKEN` / `leaderboards.stern-refresh-token`.
-5. Close that browser tab **without** signing out. Signing out revokes the token, and using the same
-   session in the browser may rotate it away from the app.
+On the first browser login Playwright downloads Chromium to `~/.cache/ms-playwright` of the service user.
+On Linux, Chromium needs some system libraries once:
 
-The app writes every rotated refresh token back to the token store, so this is needed again only when
-the refresh token expires or is revoked. The log then says `Stern token refresh failed`.
+```bash
+sudo java -cp stern-home-leaderboards.jar -Dloader.main=com.microsoft.playwright.CLI \
+    org.springframework.boot.loader.launch.PropertiesLauncher install-deps chromium
+```
+
+Use one refresh token per running instance: two instances rotating the same token lock each other out
+(each then falls back to a browser login).
 
 ## Production Build
 

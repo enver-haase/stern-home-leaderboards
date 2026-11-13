@@ -36,10 +36,7 @@ public class SternAuthService {
     private static final String INSIDER_BASE = "https://insider.sternpinball.com";
     private static final String LOGIN_URL = INSIDER_BASE + "/login";
     private static final Duration AUTH_EXPIRY = Duration.ofMinutes(30);
-    private static final Pattern TOKEN_PATTERN = Pattern.compile("spb-insider-token=([^;]+)");
     private static final Pattern SCRIPT_SRC_PATTERN = Pattern.compile("src=\"(/_next/static/chunks/[^\"]+\\.js)\"");
-    private static final Pattern LOGIN_ACTION_PATTERN =
-            Pattern.compile("createServerReference\\)?\\(\"([a-f0-9]{40,64})\"[^)]+\"performLogin\"");
 
     // Since November 2026 Insider signs in through OIDC (Descope, authorization code + PKCE) and stores
     // the access token in the spb-insider-token cookie. We keep a refresh token and trade it for access
@@ -52,21 +49,26 @@ public class SternAuthService {
             Pattern.compile("discoveryUrl:\"(https://[^\"]+/\\.well-known/openid-configuration)\"");
     private static final Pattern CLIENT_ID_PATTERN = Pattern.compile("clientId:\"([A-Za-z0-9_-]{8,})\"");
     private static final Duration ACCESS_TOKEN_MARGIN = Duration.ofMinutes(2);
+    // A browser login costs ~15 s and ~550 MB; don't retry it on every API call when it fails.
+    private static final Duration BROWSER_LOGIN_COOLDOWN = Duration.ofMinutes(15);
 
     private final LeaderboardProperties props;
     private final HttpClient httpClient;
+    private final SternBrowserLogin browserLogin;
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     private volatile String token;
     private volatile String cookies;
     private volatile Instant lastAuthTime;
     private volatile Duration authExpiry = AUTH_EXPIRY;
-    private volatile String loginActionHash;
+    private volatile String refreshToken;
+    private volatile Instant lastBrowserLogin;
     private volatile String oidcClientId;
     private volatile String oidcTokenEndpoint;
 
-    public SternAuthService(LeaderboardProperties props) {
+    public SternAuthService(LeaderboardProperties props, SternBrowserLogin browserLogin) {
         this.props = props;
+        this.browserLogin = browserLogin;
         this.httpClient = HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .connectTimeout(Duration.ofSeconds(15))
@@ -77,7 +79,31 @@ public class SternAuthService {
         if (oidcRefreshLogin()) {
             return true;
         }
-        return passwordActionLogin();
+        return browserLogin() && oidcRefreshLogin();
+    }
+
+    /** Gets a fresh refresh token by signing in with username and password in a headless browser. */
+    private boolean browserLogin() {
+        String username = props.sternUsername();
+        String password = props.sternPassword();
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            log.error("STERN_USERNAME and STERN_PASSWORD must be configured");
+            return false;
+        }
+        Instant last = lastBrowserLogin;
+        if (last != null && Instant.now().isBefore(last.plus(BROWSER_LOGIN_COOLDOWN))) {
+            log.warn("Stern browser login failed at {}; next attempt after {}", last, last.plus(BROWSER_LOGIN_COOLDOWN));
+            return false;
+        }
+        lastBrowserLogin = Instant.now();
+        log.info("Signing in to Stern Insider in a headless browser");
+        return browserLogin.obtainRefreshToken(username, password)
+                .map(t -> {
+                    storeRefreshToken(t);
+                    lastBrowserLogin = null;
+                    return true;
+                })
+                .orElse(false);
     }
 
     /**
@@ -87,8 +113,8 @@ public class SternAuthService {
     private boolean oidcRefreshLogin() {
         String refreshToken = loadRefreshToken();
         if (refreshToken == null) {
-            log.warn("No Stern refresh token configured (leaderboards.stern-refresh-token or {}); "
-                    + "falling back to the old password login", props.sternTokenStore());
+            log.info("No Stern refresh token yet ({}); signing in with username and password",
+                    props.sternTokenStore());
             return false;
         }
 
@@ -117,8 +143,12 @@ public class SternAuthService {
                 } catch (JacksonException ignored) {
                     // not JSON
                 }
-                log.error("Stern token refresh failed - status: {}, error: {}. A new refresh token is needed "
-                        + "(sign in at insider.sternpinball.com and copy it, see README)", response.statusCode(), error);
+                log.error("Stern token refresh failed - status: {}, error: {}; signing in again",
+                        response.statusCode(), error);
+                // The token is spent; a changed client id or endpoint is re-read from the login page next time.
+                this.refreshToken = null;
+                this.oidcClientId = null;
+                this.oidcTokenEndpoint = null;
                 return false;
             }
 
@@ -190,8 +220,10 @@ public class SternAuthService {
         return true;
     }
 
-    /** The refresh token from the token store, or the configured one on first use. */
+    /** The current refresh token: the last one seen, else the token store, else the configured one. */
     private String loadRefreshToken() {
+        String current = refreshToken;
+        if (current != null) return current;
         Path store = Path.of(props.sternTokenStore());
         try {
             if (Files.isReadable(store)) {
@@ -205,8 +237,12 @@ public class SternAuthService {
         return configured == null || configured.isBlank() ? null : configured.trim();
     }
 
-    /** Keeps a rotated refresh token across restarts; written atomically and readable by the owner only. */
+    /**
+     * Keeps a new refresh token in memory and, across restarts, in the token store (written atomically,
+     * readable by the owner only). If the file can't be written the app keeps working until it restarts.
+     */
     private void storeRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
         Path store = Path.of(props.sternTokenStore());
         try {
             Path dir = store.toAbsolutePath().getParent();
@@ -257,156 +293,6 @@ public class SternAuthService {
         return bodies;
     }
 
-    /** The pre-November-2026 login through the performLogin Next.js server action. */
-    private boolean passwordActionLogin() {
-        this.authExpiry = AUTH_EXPIRY;
-        String username = props.sternUsername();
-        String password = props.sternPassword();
-        if (username == null || username.isBlank() || password == null || password.isBlank()) {
-            log.error("STERN_USERNAME and STERN_PASSWORD must be configured");
-            return false;
-        }
-
-        try {
-            String actionHash = getLoginActionHash();
-            if (actionHash == null) {
-                log.error("Could not resolve performLogin Next-Action hash from Stern login page");
-                return false;
-            }
-
-            String body = "[\"" + escapeJson(username) + "\",\"" + escapeJson(password) + "\"]";
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(LOGIN_URL))
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .header("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0")
-                    .header("Accept", "text/x-component")
-                    .header("Accept-Language", "en-US,en;q=0.5")
-                    .header("Referer", "https://insider.sternpinball.com/login")
-                    .header("Next-Action", actionHash)
-                    .header("Next-Router-State-Tree", "%5B%22%22%2C%7B%22children%22%3A%5B%22login%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2C%22%2Flogin%22%2C%22refresh%22%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D")
-                    .header("Content-Type", "text/plain;charset=UTF-8")
-                    .header("Origin", "https://insider.sternpinball.com")
-                    .header("DNT", "1")
-                    .header("Sec-GPC", "1")
-                    .header("Sec-Fetch-Dest", "empty")
-                    .header("Sec-Fetch-Mode", "cors")
-                    .header("Sec-Fetch-Site", "same-origin")
-                    .header("Pragma", "no-cache")
-                    .header("Cache-Control", "no-cache")
-                    .timeout(Duration.ofSeconds(30))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            // Extract token from Set-Cookie headers
-            String extractedToken = null;
-            StringBuilder cookieBuilder = new StringBuilder();
-            for (String setCookie : response.headers().allValues("set-cookie")) {
-                if (cookieBuilder.length() > 0) cookieBuilder.append("; ");
-                cookieBuilder.append(setCookie.split(";")[0]);
-                Matcher m = TOKEN_PATTERN.matcher(setCookie);
-                if (m.find()) {
-                    extractedToken = m.group(1);
-                }
-            }
-
-            // Check for authentication success in response body
-            boolean authenticated = false;
-            String responseBody = response.body();
-            if (responseBody != null) {
-                for (String line : responseBody.split("\n")) {
-                    if (line.contains("\"authenticated\"")) {
-                        if (line.contains("\"authenticated\":true") || line.contains("\"authenticated\": true")) {
-                            authenticated = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (response.statusCode() == 200 && (authenticated || extractedToken != null)) {
-                this.token = extractedToken;
-                this.cookies = cookieBuilder.toString();
-                this.lastAuthTime = Instant.now();
-                log.info("Stern authentication successful");
-                return true;
-            } else if (response.statusCode() == 303 || response.statusCode() == 302) {
-                // Stern may redirect on success — check for token in cookies regardless
-                if (extractedToken != null) {
-                    this.token = extractedToken;
-                    this.cookies = cookieBuilder.toString();
-                    this.lastAuthTime = Instant.now();
-                    log.info("Stern authentication successful via redirect (status {})", response.statusCode());
-                    return true;
-                }
-                log.error("Stern authentication redirect but no token - status: {}", response.statusCode());
-                return false;
-            } else {
-                // 200 with no token typically means Stern redeployed and the action hash is stale —
-                // drop the cache so the next attempt re-resolves it.
-                this.loginActionHash = null;
-                log.error("Stern authentication failed - status: {}, authenticated: {}, hasToken: {}",
-                        response.statusCode(), authenticated, extractedToken != null);
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("Stern login error", e);
-            return false;
-        }
-    }
-
-    private String getLoginActionHash() {
-        String cached = this.loginActionHash;
-        if (cached != null) return cached;
-        String resolved = resolveLoginActionHash();
-        if (resolved != null) this.loginActionHash = resolved;
-        return resolved;
-    }
-
-    private String resolveLoginActionHash() {
-        try {
-            HttpResponse<String> page = httpClient.send(
-                    HttpRequest.newBuilder()
-                            .uri(URI.create(LOGIN_URL))
-                            .GET()
-                            .header("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0")
-                            .header("Accept", "text/html")
-                            .timeout(Duration.ofSeconds(15))
-                            .build(),
-                    HttpResponse.BodyHandlers.ofString());
-            if (page.statusCode() != 200) {
-                log.error("Login page returned status {} while resolving action hash", page.statusCode());
-                return null;
-            }
-            Set<String> chunkPaths = new LinkedHashSet<>();
-            Matcher m = SCRIPT_SRC_PATTERN.matcher(page.body());
-            while (m.find()) chunkPaths.add(m.group(1));
-
-            for (String path : chunkPaths) {
-                HttpResponse<String> chunk = httpClient.send(
-                        HttpRequest.newBuilder()
-                                .uri(URI.create(INSIDER_BASE + path))
-                                .GET()
-                                .timeout(Duration.ofSeconds(15))
-                                .build(),
-                        HttpResponse.BodyHandlers.ofString());
-                if (chunk.statusCode() != 200) continue;
-                Matcher hit = LOGIN_ACTION_PATTERN.matcher(chunk.body());
-                if (hit.find()) {
-                    String hash = hit.group(1);
-                    log.info("Resolved performLogin Next-Action hash {} from {}", hash, path);
-                    return hash;
-                }
-            }
-            log.error("performLogin Server Action not found in any login-page chunk ({} scanned)", chunkPaths.size());
-            return null;
-        } catch (Exception e) {
-            log.error("Failed to resolve performLogin action hash", e);
-            return null;
-        }
-    }
-
     public boolean isExpired() {
         return lastAuthTime == null || Instant.now().isAfter(lastAuthTime.plus(authExpiry));
     }
@@ -425,9 +311,5 @@ public class SternAuthService {
     public String getCookies() {
         refreshIfNeeded();
         return cookies;
-    }
-
-    private static String escapeJson(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
